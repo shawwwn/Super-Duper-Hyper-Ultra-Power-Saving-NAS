@@ -1,55 +1,8 @@
 /* codebase for both hook_arm.h and hook_arm64.h */
+#include <linux/syscalls.h>
+#include <linux/kallsyms.h>
 #include "../page.h"
-
-// TODO: pass in as params
-static char* mnt_path;
-static size_t mnt_path_len;
-
-
-
-
-
-
-
-// TODO: move below to util.o
-
-static int turn_on_nas(void) {
-	return 0;
-}
-
-static inline int nas_path_match_with_str(const char* path) {
-	if (strstr(path, "journal") == NULL)
-		printk(KERN_INFO "openat = %s\n", path);
-	return (strncmp(mnt_path, path, mnt_path_len) == 0);
-}
-
-static inline int nas_path_match_with_fd(int fd) {
-	struct file* f;
-	char buf[PATH_MAX];
-	char* pwd;
-
-	if (fd < 0)
-		return 0;
-
-	f = fget_raw(fd);
-	if (f == NULL)
-		return 0;
-
-	// pwd = dentry_path_raw(current->fs->pwd.dentry, buf, PATH_MAX);
-	pwd = d_absolute_path(&f->f_path, buf, PATH_MAX); // get full path
-	if (pwd == NULL)
-		return 0;
-
-	// printk(KERN_INFO "openat = %s\n", pwd);
-
-	return nas_path_match_with_str(pwd);
-}
-
-
-
-
-
-
+#include "../util.h"
 
 /*
  * Hook routine
@@ -60,13 +13,13 @@ asmlinkage long my_sys_openat(int dfd, const char __user *filename, int flags, u
 	if (*filename != '/') {
 		// match after running openat()
 		int fd = org_sys_openat(dfd, filename, flags, mode);
-		if (nas_path_match_with_fd(fd))
-			turn_on_nas();
+		if (nas_path_match_with_fd(mnt_path, fd))
+			nas_poweron();
 		return fd;
 	} else {
 		// match before running openat()
-		if (nas_path_match_with_str(filename))
-			turn_on_nas();
+		if (nas_path_match_with_str(mnt_path, filename))
+			nas_poweron();
 	}
 
 	return org_sys_openat(dfd, filename, flags, mode);

@@ -1,6 +1,9 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>
+#include "util.h"
+#include "thread.h"
+#include "gpio.h"
 
 #ifdef __aarch64__
 #include "arch/hook_arm64.h"
@@ -13,9 +16,11 @@
 static int __init init_func(void)
 {
 	int ret;
-	printk(KERN_INFO "module 'test' start\n");
 	mnt_path = "/media/usb2"; // TODO: pass in as parameters
-	mnt_path_len = strlen(mnt_path);
+
+	ret = start_nas_mon();
+	if (ret != 0)
+		return ret;
 
 	ret = install_hook();
 	if (ret != 0)
@@ -27,6 +32,7 @@ static int __init init_func(void)
 static void __exit exit_func(void)
 {
 	uninstall_hook();
+	stop_nas_mon();
 }
 
 module_init(init_func);

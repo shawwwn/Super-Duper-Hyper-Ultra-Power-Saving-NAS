@@ -1,5 +1,5 @@
 obj-m = nas_pm.o
-nas_pm-objs += main.o page.o
+nas_pm-objs += main.o page.o util.o thread.o gpio.o
 KVERSION = $(shell uname -r)
 
 all:

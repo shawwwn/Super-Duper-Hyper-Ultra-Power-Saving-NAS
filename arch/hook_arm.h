@@ -12,7 +12,7 @@
  */
 static int install_hook(void)
 {
-	printk("HELLO ARM KERNEL!\n");
+	printk("install ARM hooks\n");
 
 	if (get_init_mm() != 0) {
 		printk(KERN_ERR "Couldn't file init_mm.\n");

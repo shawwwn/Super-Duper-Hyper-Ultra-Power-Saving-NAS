@@ -1,8 +1,5 @@
 #include <linux/syscalls.h>
 #include <linux/kallsyms.h>
-// util.o
-#include <linux/file.h>
-
 #include "hook_arm.c"
 
 /*
@@ -14,13 +11,13 @@ asmlinkage long my_compat_sys_openat(int dfd, const char __user *filename, int f
 	if (*filename != '/') {
 		// match after running openat()
 		int fd = org_compat_sys_openat(dfd, filename, flags, mode);
-		if (nas_path_match_with_fd(fd))
-			turn_on_nas();
+		if (nas_path_match_with_fd(mnt_path, fd))
+			nas_poweron();
 		return fd;
 	} else {
 		// match before running openat()
-		if (nas_path_match_with_str(filename)) 
-			turn_on_nas();
+		if (nas_path_match_with_str(mnt_path, filename)) 
+			nas_poweron();
 	}
 
 	return org_compat_sys_openat(dfd, filename, flags, mode);
@@ -77,7 +74,7 @@ static inline void unhook_sys_call_table_arm64(void)
  */
 static int install_hook(void)
 {
-	printk("HELLO ARM64 KERNEL!\n");
+	printk("install ARM64 hooks\n");
 
 	if (get_init_mm() != 0) {
 		printk(KERN_ERR "Couldn't file init_mm.\n");
