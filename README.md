@@ -9,7 +9,7 @@ This kernel module does mainly two things:
 
 2. Timeout an idle harddrive for it to be unmount, eject, and power down.
 
-Developed for **ARM64**, should also work on **ARM**.\
+Developed for Kernel 4.9+ on **ARM64**, should also work on **ARM**.\
 Has not been make compatible with **X86(_64)**, and probably never will.
 
 
