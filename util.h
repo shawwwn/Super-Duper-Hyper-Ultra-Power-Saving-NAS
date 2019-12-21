@@ -3,7 +3,7 @@
 
 extern char* mnt_path;
 
-int nas_poweron(void);
+int nas_try_poweron(void);
 int nas_path_match_with_str(const char* pathname, const char* str);
 int nas_path_match_with_fd(const char* pathname, int fd);
 int nas_unmount(const char* pathname);

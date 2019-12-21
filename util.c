@@ -14,12 +14,57 @@
 #include <asm/errno.h>
 #include "util.h"
 #include "thread.h" // nas_timer_ticks
+#include <linux/preempt.h>
+#include <linux/semaphore.h>
 
-char* mnt_path = "";
+#define SILENT_SEC 5
 
-int nas_poweron(void) {
-	printk("nas '%s' is powering on ...\n", mnt_path);
+char* mnt_path;
+
+
+int nas_try_poweron(void) {
+	static DEFINE_SEMAPHORE(sem);
+	static unsigned long volatile last_jf;
+	unsigned long jf;
+	int ret;
+
+	if (in_interrupt())
+		return EINTR;
+
+	// early task rejection (optional)
+	jf = jiffies - last_jf;
+	if (jf < SILENT_SEC*HZ)
+		return 99; // during silent period
+
+	// enter critical section
+	if ((ret = down_interruptible(&sem)) != 0) {
+		return -ret; // EINTR, ETIME
+	}
+
+	// reject task if called within @SILENT_SEC seconds since last call
+	jf = jiffies - last_jf;
+	if (jf < SILENT_SEC*HZ) {
+		ret = 99;
+		goto out;
+	}
+	last_jf = jiffies;
+
+	// TODO: check if already mounted
+
+	// refresh ticks
 	nas_timer_ticks = TIMER_TICKS;
+
+	// invoke mount script
+	printk("enter helper\n");
+	ret = call_mountscript();
+	if (ret == 0) {
+		printk("nas is mounted\n");
+	}
+	printk("exit helper\n");
+
+out:
+	// leave critical section
+	up(&sem);
 	return 0;
 }
 
@@ -127,7 +172,7 @@ int call_mountscript(void)
 	
 	ret = call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
 	ret >>= 8;
-	printk("mountscript = %d\n", ret);
+	printk("mountscript return: %d\n", ret);
 	return ret;
 }
 

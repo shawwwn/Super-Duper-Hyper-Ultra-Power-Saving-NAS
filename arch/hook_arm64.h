@@ -12,12 +12,12 @@ asmlinkage long my_compat_sys_openat(int dfd, const char __user *filename, int f
 		// match after running openat()
 		int fd = org_compat_sys_openat(dfd, filename, flags, mode);
 		if (nas_path_match_with_fd(mnt_path, fd))
-			nas_poweron();
+			nas_try_poweron();
 		return fd;
 	} else {
 		// match before running openat()
 		if (nas_path_match_with_str(mnt_path, filename)) 
-			nas_poweron();
+			nas_try_poweron();
 	}
 
 	return org_compat_sys_openat(dfd, filename, flags, mode);
