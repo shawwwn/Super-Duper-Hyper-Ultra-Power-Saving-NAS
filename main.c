@@ -58,5 +58,6 @@ module_param_named(mountscript, mntscript, charp, 0600);
 MODULE_PARM_DESC(mountscript, "Which script to execute when mounting a directory. Default: /etc/nas_pm/mountscript.sh");
 
 MODULE_AUTHOR("Shawwwn");
+MODULE_INFO(email, "shawwwn1@gmail.com");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Super Duper Hyper Ultra Power Saving NAS Power Management Driver");
