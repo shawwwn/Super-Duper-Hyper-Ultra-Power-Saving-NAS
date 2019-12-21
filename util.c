@@ -20,13 +20,16 @@
 
 #define SILENT_SEC 10
 
+/**
+ * Stop at the first null character, returns success.
+ */
 static inline int strncmp2(const char *cs, const char *ct, size_t count)
 {
 	unsigned char c1, c2;
 	while (count) {
 		c1 = *cs++;
 		c2 = *ct++;
-		if (!c1 || !c2)
+		if (!c1)
 			break;
 		if (c1 != c2)
 			return c1 < c2 ? -1 : 1;
@@ -89,8 +92,8 @@ out:
 }
 
 inline int nas_path_match_with_str(const char* pathname, const char* str) {
-	if (strncmp2(str, pathname, PATH_MAX) == 0) { // PATH_MAX
-		printk(KERN_INFO "openat = %s, %s\n", str, pathname);
+	if (strncmp2(pathname, str, PATH_MAX) == 0) { // PATH_MAX
+		printk(KERN_INFO "openat = %s\n", str);
 		return 1;
 	}
 	return 0;
