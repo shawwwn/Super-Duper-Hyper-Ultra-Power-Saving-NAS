@@ -1,15 +1,6 @@
 #ifndef HEADER_UTIL
 #define HEADER_UTIL
 
-#include <linux/kmod.h>
-#include <linux/dcache.h>
-#include <linux/fs.h>
-#include <linux/kallsyms.h>
-#include <linux/namei.h>
-#include <linux/file.h>
-#include <asm/uaccess.h>
-#include <asm/errno.h>
-
 extern char* mnt_path;
 
 int nas_poweron(void);
@@ -18,5 +9,8 @@ int nas_path_match_with_fd(const char* pathname, int fd);
 int nas_unmount(const char* pathname);
 int nas_check_mnt(const char *pathname);
 int call_mountscript(void);
+struct block_device *blkdev_get_by_mountpoint(char* pathname);
+struct device *get_first_usb_device(struct block_device *bdev);
+int remove_usb_device(struct device* dev);
 
 #endif

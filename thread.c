@@ -1,3 +1,8 @@
+#include <linux/kernel.h>
+#include <linux/delay.h>
+#include <linux/kthread.h>
+#include <asm/errno.h>
+#include <linux/cdrom.h>
 #include "thread.h"
 #include "util.h"
 #include "gpio.h"
@@ -42,7 +47,17 @@ static int thread_func(void *data) {
 
 		// Check timer expiration
 		if (nas_timer_ticks == 0) {
+			struct device *dev;
+			struct block_device *bdev;
 			printk("timer expired\n");
+
+			bdev = blkdev_get_by_mountpoint(mnt_path); // hold bdev
+			if (IS_ERR(bdev)){
+				printk(KERN_ERR "%s is not a mountpoint\n", mnt_path);
+				goto restart;
+			}
+			dev = get_first_usb_device(bdev); // hold dev
+			printk(KERN_INFO "usb_device = %s\n", dev_name(dev));
 
 			// umount
 			printk(KERN_INFO "unmount(%s)\n", mnt_path);
@@ -51,11 +66,26 @@ static int thread_func(void *data) {
 				goto restart;
 			}
 
+			// eject
+			kthread_ssleep(0.5);
+			printk(KERN_INFO "eject(%s)\n", mnt_path);
+			if (ioctl_by_bdev(bdev, CDROMEJECT, 0) !=0 ) {
+				printk(KERN_ERR "eject() failed\n");
+			}
+
+			// remove(optional)
+			kthread_ssleep(0.5);
+			printk(KERN_INFO "remove(%s)\n", dev_name(dev));
+			if (remove_usb_device(dev) != 0) {
+				printk(KERN_ERR "remove() failed\n");
+			}
+			put_device(dev); // release dev
+			blkdev_put(bdev, 0); // release bdev
+
 			// pulldown gpio
 			kthread_ssleep(1);
 			printk(KERN_INFO "pulldown gpio(%d)\n", GPIO_PIN);
 			set_gpio(GPIO_PIN, 0);
-			// TODO: pulldown gpio
 		}
 
 		// tick-tock

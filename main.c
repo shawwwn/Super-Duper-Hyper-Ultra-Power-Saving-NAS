@@ -16,7 +16,7 @@
 static int __init init_func(void)
 {
 	int ret;
-	mnt_path = "/media/usb2"; // TODO: pass in as parameters
+	mnt_path = "/media/usb3"; // TODO: pass in as parameters
 
 	ret = start_nas_mon();
 	if (ret != 0)
