@@ -1,27 +1,22 @@
 # Super Duper Hyper Ultra Power Saving NAS Driver Module
 
-This kernel module does mainly two things:
+This is the driver module for my super power-saving NAS.\
+Essentially, the driver monitors access to a given mountpoint(directory), and will power-up the underlying harddrive upon access.\
+If a harddrive has been kept idle for too long, it will be unmounted and powerdown in order to save power.
 
-1. Monitor a given directory(mountpoint) for user accesses.\
-    Whenever mountpoint gets accessed, power up a nas harddrive and mount it onto the mountpoint.\
-    The whole process is done transparently by hooking `sys_openat()`.\
-    The actually mounting process is delegated to a shell script in userspace.
-
-2. Timeout an idle harddrive for it to be unmount, eject, and power down.
-
-Developed for Kernel 4.9+ on **ARM64**, should also work on **ARM**.\
-Has not been make compatible with **X86(_64)**, and probably never will.
+Developed on Kernel 4.9+ for **ARM64**, should also work on **ARM**.\
+Has not been make compatible with **X86(_64)**, yet.
 
 
 ## HOWTOs:
-Install:
+**Install:**
 ```bash
-apt-get install build-essential linux-headers-`uname -r`
+apt-get install mountpoint build-essential linux-headers-`uname -r`
 make
-insmod nas_pm.ko
+make install
 ```
 
-Uninstall:
+**Uninstall:**
 ```bash
-rmmod nas_pm
+make uninstall
 ```
