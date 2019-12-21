@@ -19,9 +19,6 @@
 
 #define SILENT_SEC 5
 
-char* mnt_path;
-
-
 int nas_try_poweron(void) {
 	static DEFINE_SEMAPHORE(sem);
 	static unsigned long volatile last_jf;
@@ -57,6 +54,7 @@ int nas_try_poweron(void) {
 	// invoke mount script
 	printk("enter helper\n");
 	ret = call_mountscript();
+	printk("mountscript return = %d\n", ret);
 	if (ret == 0) {
 		printk("nas is mounted\n");
 	}
@@ -166,13 +164,12 @@ out:
  */
 int call_mountscript(void)
 {
-	char * envp[] = { "HOME=/", NULL };
-	char * argv[] = { "/bin/sh", "/root/cdir.sh", NULL };
 	int ret;
-	
+	char * envp[] = { "HOME=/", NULL };
+	char * argv[] = { "/bin/sh", "/root/mdir.sh", uuid, mntpt, NULL };
+
 	ret = call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
 	ret >>= 8;
-	printk("mountscript return: %d\n", ret);
 	return ret;
 }
 

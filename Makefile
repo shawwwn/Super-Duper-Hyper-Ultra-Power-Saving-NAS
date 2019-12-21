@@ -9,7 +9,7 @@ clean:
 
 start:
 	dmesg -C
-	insmod nas_pm.ko
+	insmod nas_pm.ko uuid="000D0B09000962AD" mountpoint="/media/usb2"
 	dmesg
 
 stop:

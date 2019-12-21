@@ -14,12 +14,12 @@ asmlinkage long my_sys_openat(int dfd, const char __user *filename, int flags, u
 	if (*filename != '/') {
 		// match after running openat()
 		int fd = org_sys_openat(dfd, filename, flags, mode);
-		if (nas_path_match_with_fd(mnt_path, fd))
+		if (nas_path_match_with_fd(mntpt, fd))
 			nas_try_poweron();
 		return fd;
 	} else {
 		// match before running openat()
-		if (nas_path_match_with_str(mnt_path, filename))
+		if (nas_path_match_with_str(mntpt, filename))
 			nas_try_poweron();
 	}
 

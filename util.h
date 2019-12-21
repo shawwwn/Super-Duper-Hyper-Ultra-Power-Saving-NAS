@@ -1,7 +1,8 @@
 #ifndef HEADER_UTIL
 #define HEADER_UTIL
 
-extern char* mnt_path;
+extern char* mntpt;
+extern char* uuid;
 
 int nas_try_poweron(void);
 int nas_path_match_with_str(const char* pathname, const char* str);

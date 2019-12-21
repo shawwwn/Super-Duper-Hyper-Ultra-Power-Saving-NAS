@@ -26,7 +26,7 @@ static int thread_func(void *data) {
 		// Check mount point can umount
 		if (nas_timer_ticks >= 0) {
 			int ret;
-			ret = nas_check_mnt(mnt_path);
+			ret = nas_check_mnt(mntpt);
 			if (ret == EBUSY) {
 				// hdd is busy
 				printk(KERN_INFO "device busy\n");
@@ -51,24 +51,24 @@ static int thread_func(void *data) {
 			struct block_device *bdev;
 			printk("timer expired\n");
 
-			bdev = blkdev_get_by_mountpoint(mnt_path); // hold bdev
+			bdev = blkdev_get_by_mountpoint(mntpt); // hold bdev
 			if (IS_ERR(bdev)){
-				printk(KERN_ERR "%s is not a mountpoint\n", mnt_path);
+				printk(KERN_ERR "%s is not a mountpoint\n", mntpt);
 				goto restart;
 			}
 			dev = get_first_usb_device(bdev); // hold dev
 			printk(KERN_INFO "usb_device = %s\n", dev_name(dev));
 
 			// umount
-			printk(KERN_INFO "unmount(%s)\n", mnt_path);
-			if (nas_unmount(mnt_path) != 0) {
+			printk(KERN_INFO "unmount(%s)\n", mntpt);
+			if (nas_unmount(mntpt) != 0) {
 				printk(KERN_ERR "umount() failed, retry\n");
 				goto restart;
 			}
 
 			// eject
 			kthread_ssleep(0.5);
-			printk(KERN_INFO "eject(%s)\n", mnt_path);
+			printk(KERN_INFO "eject(%s)\n", mntpt);
 			if (ioctl_by_bdev(bdev, CDROMEJECT, 0) !=0 ) {
 				printk(KERN_ERR "eject() failed\n");
 			}
