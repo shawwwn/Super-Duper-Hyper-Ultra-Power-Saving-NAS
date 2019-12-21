@@ -4,6 +4,7 @@
 extern char* mntscript;
 extern char* mntpt;
 extern char* uuid;
+extern int gpio_pin;
 
 int nas_try_poweron(void);
 int nas_path_match_with_str(const char* pathname, const char* str);

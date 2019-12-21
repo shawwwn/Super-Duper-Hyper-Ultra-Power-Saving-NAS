@@ -17,13 +17,14 @@ static int __init init_func(void)
 {
 	int ret;
 
-	if (!mntpt || !uuid) {
+	if (!mntpt || !uuid || (gpio_pin<0)) {
 		printk(KERN_ERR "Invalid kernel module parameters.");
 		return -EINVAL;
 	}
 	printk(KERN_INFO "mountscript = %s\n", mntscript);
-	printk(KERN_INFO "mntpt = %s\n", mntpt);
+	printk(KERN_INFO "mountpoint = %s\n", mntpt);
 	printk(KERN_INFO "uuid = %s\n", uuid);
+	printk(KERN_INFO "gpio = %d\n", gpio_pin);
 
 	ret = start_nas_mon();
 	if (ret != 0)
@@ -56,6 +57,10 @@ MODULE_PARM_DESC(uuid, "Target directory to be mounted at.");
 char* mntscript = "/etc/nas_pm/mountscript.sh";
 module_param_named(mountscript, mntscript, charp, 0600);
 MODULE_PARM_DESC(mountscript, "Which script to execute when mounting a directory. Default: /etc/nas_pm/mountscript.sh");
+
+int gpio_pin = -1;
+module_param_named(gpio, gpio_pin, int, 0600);
+MODULE_PARM_DESC(gpio, "GPIO pin # to power on disk,");
 
 MODULE_AUTHOR("Shawwwn");
 MODULE_INFO(email, "shawwwn1@gmail.com");

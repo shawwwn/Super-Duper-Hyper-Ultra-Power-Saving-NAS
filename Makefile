@@ -10,8 +10,8 @@ clean:
 
 install:
 	make -C /lib/modules/$(KVERSION)/build M=$(PWD) modules_install
-	cp -avr etc /
-	echo "Done, reboot to see effects."
+	@cp -avr etc /
+	@echo "Done, reboot to see effects."
 
 uninstall:
 	rm /lib/modules/$(KVERSION)/extra/nas_pm.ko
@@ -19,7 +19,7 @@ uninstall:
 
 start:
 	dmesg -C
-	insmod nas_pm.ko uuid="000D0B09000962AD" mountpoint="/media/usb2"
+	insmod nas_pm.ko uuid="000D0B09000962AD" mountpoint="/media/usb2" gpio=472
 	dmesg
 
 stop:

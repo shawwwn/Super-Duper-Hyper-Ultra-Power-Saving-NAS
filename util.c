@@ -12,10 +12,11 @@
 #include <linux/file.h>
 #include <asm/uaccess.h>
 #include <asm/errno.h>
-#include "util.h"
-#include "thread.h" // nas_timer_ticks
 #include <linux/preempt.h>
 #include <linux/semaphore.h>
+#include "util.h"
+#include "thread.h" // nas_timer_ticks
+#include "gpio.h"
 
 #define SILENT_SEC 5
 
@@ -51,14 +52,20 @@ int nas_try_poweron(void) {
 	// refresh ticks
 	nas_timer_ticks = TIMER_TICKS;
 
+	// pullup gpio
+	if (get_gpio(gpio_pin) == 0)
+		set_gpio(gpio_pin, 1);
+
 	// invoke mount script
-	printk("enter helper\n");
 	ret = call_mountscript();
-	printk("mountscript return = %d\n", ret);
 	if (ret == 0) {
-		printk("nas is mounted\n");
+		printk("mount successful\n");
+	} else if (ret == 1) {
+		printk("already mounted\n");
+	} else {
+		printk("mount failed (%d)\n", ret);
+		set_gpio(gpio_pin, 0);
 	}
-	printk("exit helper\n");
 
 out:
 	// leave critical section
@@ -177,8 +184,12 @@ int file_exist(char* pathname)
 int call_mountscript(void)
 {
 	int ret;
+	char gpio_str[32];
 	char * envp[] = { "HOME=/", NULL };
-	char * argv[] = { "/bin/sh", mntscript, uuid, mntpt, NULL };
+	char * argv[] = { "/bin/sh", mntscript, uuid, mntpt, NULL, NULL };
+
+	snprintf(gpio_str, sizeof(gpio_str), "%d", gpio_pin);
+	argv[4] = gpio_str;
 
 	ret = ENOENT;
 	if (file_exist(mntscript)) {
