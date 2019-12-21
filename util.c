@@ -18,7 +18,22 @@
 #include "thread.h" // nas_timer_ticks
 #include "gpio.h"
 
-#define SILENT_SEC 5
+#define SILENT_SEC 10
+
+static inline int strncmp2(const char *cs, const char *ct, size_t count)
+{
+	unsigned char c1, c2;
+	while (count) {
+		c1 = *cs++;
+		c2 = *ct++;
+		if (!c1 || !c2)
+			break;
+		if (c1 != c2)
+			return c1 < c2 ? -1 : 1;
+		count--;
+	}
+	return 0;
+}
 
 int nas_try_poweron(void) {
 	static DEFINE_SEMAPHORE(sem);
@@ -49,9 +64,6 @@ int nas_try_poweron(void) {
 
 	// TODO: check if already mounted
 
-	// refresh ticks
-	nas_timer_ticks = TIMER_TICKS;
-
 	// pullup gpio
 	if (get_gpio(gpio_pin) == 0)
 		set_gpio(gpio_pin, 1);
@@ -67,6 +79,9 @@ int nas_try_poweron(void) {
 		set_gpio(gpio_pin, 0);
 	}
 
+	// refresh ticks
+	nas_timer_ticks = TIMER_TICKS;
+
 out:
 	// leave critical section
 	up(&sem);
@@ -74,8 +89,8 @@ out:
 }
 
 inline int nas_path_match_with_str(const char* pathname, const char* str) {
-	if (strncmp(str, pathname, PATH_MAX) == 0) {
-		printk(KERN_INFO "openat = %s\n", str);
+	if (strncmp2(str, pathname, PATH_MAX) == 0) { // PATH_MAX
+		printk(KERN_INFO "openat = %s, %s\n", str, pathname);
 		return 1;
 	}
 	return 0;
@@ -97,9 +112,9 @@ inline int nas_path_match_with_fd(const char* pathname, int fd) {
 	pwd = d_absolute_path(&f->f_path, buf, PATH_MAX); // get full path
 	if (pwd == NULL)
 		goto false;
-
 	// printk(KERN_INFO "openat = %s\n", pwd);
 
+	fput(f);
 	return nas_path_match_with_str(pathname, pwd);
 
 false:
@@ -142,7 +157,7 @@ int nas_check_mnt(const char *pathname)
 	if (kern_path(pathname, LOOKUP_RCU, &fpath) != 0)
 		return ENOENT; // pathname not exist
 
-	// printk("1 dentry.ref=%u\n", fpath.dentry->d_lockref.count);
+	printk("1 dentry.ref=%u\n", fpath.dentry->d_lockref.count);
 
 	if(!S_ISDIR(fpath.dentry->d_inode->i_mode)) {
 		ret = ENOTBLK; // not a directory/mountpoint
@@ -162,7 +177,7 @@ int nas_check_mnt(const char *pathname)
 
 out:
 	path_put(&fpath);
-	// printk("2 dentry.ref=%u\n", fpath.dentry->d_lockref.count);
+	printk("2 dentry.ref=%u\n", fpath.dentry->d_lockref.count);
 	return ret;
 }
 

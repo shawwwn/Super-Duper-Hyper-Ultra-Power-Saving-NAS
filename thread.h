@@ -5,7 +5,6 @@ extern int nas_timer_ticks;
 
 #define TIMER_INTERVAL 10 // sec
 #define TIMER_TICKS 10
-#define GPIO_PIN 495
 
 /*
  * Interuptible sleep in kthread

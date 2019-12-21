@@ -13,7 +13,7 @@ MOUNT_FAILED=3
 # Wait for disk's uuid to show up in `blkid`
 wait_for_disk_uuid() {
 	local uuid="$1"
-	local timeout=$([ -z $2 ] && echo 10 || echo $2) # 10s
+	local timeout=$([ -z $2 ] && echo 15 || echo $2) # 15s
 	local found=false
 
 	for i in `seq 0 $timeout`; do
@@ -47,4 +47,5 @@ if ! mount "UUID=$uuid" "$mntpt"; then
 	exit $MOUNT_FAILED
 fi
 
+sleep 1
 exit 0

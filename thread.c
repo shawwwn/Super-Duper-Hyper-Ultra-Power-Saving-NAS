@@ -63,6 +63,8 @@ static int thread_func(void *data) {
 			printk(KERN_INFO "unmount(%s)\n", mntpt);
 			if (nas_unmount(mntpt) != 0) {
 				printk(KERN_ERR "umount() failed, retry\n");
+				put_device(dev); // release dev
+				blkdev_put(bdev, 0); // release bdev
 				goto restart;
 			}
 
@@ -84,8 +86,8 @@ static int thread_func(void *data) {
 
 			// pulldown gpio
 			kthread_ssleep(1);
-			printk(KERN_INFO "pulldown gpio(%d)\n", GPIO_PIN);
-			set_gpio(GPIO_PIN, 0);
+			printk(KERN_INFO "pulldown gpio(%d)\n", gpio_pin);
+			set_gpio(gpio_pin, 0);
 		}
 
 		// tick-tock
