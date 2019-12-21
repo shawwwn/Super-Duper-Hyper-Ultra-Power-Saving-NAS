@@ -21,6 +21,7 @@ static int __init init_func(void)
 		printk(KERN_ERR "Invalid kernel module parameters.");
 		return -EINVAL;
 	}
+	printk(KERN_INFO "mountscript = %s\n", mntscript);
 	printk(KERN_INFO "mntpt = %s\n", mntpt);
 	printk(KERN_INFO "uuid = %s\n", uuid);
 
@@ -51,6 +52,10 @@ MODULE_PARM_DESC(uuid, "UUID of the disk to be mounted.");
 char* mntpt = NULL;
 module_param_named(mountpoint, mntpt, charp, 0600);
 MODULE_PARM_DESC(uuid, "Target directory to be mounted at.");
+
+char* mntscript = "/etc/nas_pm/mountscript.sh";
+module_param_named(mountscript, mntscript, charp, 0600);
+MODULE_PARM_DESC(mountscript, "Which script to execute when mounting a directory. Default: /etc/nas_pm/mountscript.sh");
 
 MODULE_AUTHOR("Shawwwn");
 MODULE_LICENSE("GPL");

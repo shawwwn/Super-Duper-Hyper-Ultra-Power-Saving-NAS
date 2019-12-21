@@ -160,16 +160,32 @@ out:
 }
 
 /**
+ * Wrapper for vfs_stat, return file mode.
+ */
+int file_exist(char* pathname)
+{
+	struct path fpath;
+	if (kern_path(pathname, 0, &fpath) != 0)
+		return 0;
+	path_put(&fpath);
+	return 1;
+}
+
+/**
  * Call a predefined shell script in usermode to mount disk.
  */
 int call_mountscript(void)
 {
 	int ret;
 	char * envp[] = { "HOME=/", NULL };
-	char * argv[] = { "/bin/sh", "/root/mdir.sh", uuid, mntpt, NULL };
+	char * argv[] = { "/bin/sh", mntscript, uuid, mntpt, NULL };
 
-	ret = call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
-	ret >>= 8;
+	ret = ENOENT;
+	if (file_exist(mntscript)) {
+		ret = call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
+		ret >>= 8;
+	} else
+		printk(KERN_ERR "mountscript not found (%s)\n", mntscript);
 	return ret;
 }
 
