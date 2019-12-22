@@ -34,5 +34,5 @@ rmmod nas_pm.ko
 ## Module Parameters:
 * **`uuid`** - UUID of disk to be mounted.
 * **`mountpoint`** - Path to the directory for which the disk will be mounted at.
-* **`mountscript`** - Path to the shell script that mounts our disk. (optional)
-* **`gpio`** - GPIO pin number that is able to switch the disk on and off.
+* **`mountscript`** - Path to the shell script that mounts our disk. (default: `/etc/nas_pm/mountscript.sh`)
+* **`gpio`** - GPIO pin number to switch the disk on and off.
