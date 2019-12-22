@@ -1,7 +1,7 @@
 # Super Duper Hyper Ultra Power Saving NAS Driver Module
 
 This is the driver module for my super power-saving NAS.\
-Essentially, the driver monitors access to a given mountpoint(directory), and power-ups the underlying harddrive upon access.\
+Essentially, the driver monitors access to a given mountpoint(directory), and powers up the underlying harddrive upon access.\
 If that harddrive has been idle for too long, it will be unmounted and powerdown in order to save power.
 
 Developed on Kernel 4.9+ for **ARM64**, should also work on **ARM**.\
@@ -21,7 +21,7 @@ make install
 # edit /etc/modprobe.d/nas_pm.conf
 make uninstall
 ```
-The module shall be installed as a system module to run at every boot.
+Module will be installed as a system module to run at every boot.
 
 **Manual Install:**
 ```bash
