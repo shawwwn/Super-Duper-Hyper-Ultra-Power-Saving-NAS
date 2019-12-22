@@ -3,7 +3,8 @@
 
 extern int nas_timer_ticks;
 
-#define TIMER_INTERVAL 10 // sec
+// timeout = interval x ticks
+#define TIMER_INTERVAL 60 // sec
 #define TIMER_TICKS 10
 
 /*

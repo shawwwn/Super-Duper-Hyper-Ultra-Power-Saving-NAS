@@ -17,7 +17,7 @@ static struct task_struct *nas_thread = NULL;
 static int thread_func(void *data) {
 
 	while (!kthread_should_stop()) {
-		printk("ticks = %d\n", nas_timer_ticks);
+		// printk("ticks = %d\n", nas_timer_ticks);
 		/* ticks  < 0 : inactive
 		 *       == 0 : just expired
 		 *        > 0 : active
@@ -49,7 +49,7 @@ static int thread_func(void *data) {
 		if (nas_timer_ticks == 0) {
 			struct device *dev;
 			struct block_device *bdev;
-			printk("timer expired\n");
+			printk(KERN_INFO "timer expired\n");
 
 			bdev = blkdev_get_by_mountpoint(mntpt); // hold bdev
 			if (IS_ERR(bdev)){
@@ -106,7 +106,6 @@ static int thread_func(void *data) {
  */
 int start_nas_mon(void) {
 	char thread_name[8]="nas_mon";
-	printk("start thread '%s'\n", thread_name);
 	nas_thread = kthread_run(thread_func, NULL, thread_name);
 	if (nas_thread == ERR_PTR(-ENOMEM))
 		return ENOMEM;
@@ -114,6 +113,5 @@ int start_nas_mon(void) {
 }
 
 int stop_nas_mon(void) {
-	printk("stop thread '%s'\n", nas_thread->comm);
 	return kthread_stop(nas_thread);
 }

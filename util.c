@@ -74,11 +74,11 @@ int nas_try_poweron(void) {
 	// invoke mount script
 	ret = call_mountscript();
 	if (ret == 0) {
-		printk("mount successful\n");
+		printk(KERN_INFO "mount successful\n");
 	} else if (ret == 1) {
-		printk("already mounted\n");
+		printk(KERN_INFO "already mounted\n");
 	} else {
-		printk("mount failed (%d)\n", ret);
+		printk(KERN_ERR "mount failed (%d), reset gpio\n", ret);
 		set_gpio(gpio_pin, 0);
 	}
 
@@ -160,7 +160,7 @@ int nas_check_mnt(const char *pathname)
 	if (kern_path(pathname, LOOKUP_RCU, &fpath) != 0)
 		return ENOENT; // pathname not exist
 
-	printk("1 dentry.ref=%u\n", fpath.dentry->d_lockref.count);
+	// printk("1 dentry.ref=%u\n", fpath.dentry->d_lockref.count);
 
 	if(!S_ISDIR(fpath.dentry->d_inode->i_mode)) {
 		ret = ENOTBLK; // not a directory/mountpoint
@@ -180,7 +180,7 @@ int nas_check_mnt(const char *pathname)
 
 out:
 	path_put(&fpath);
-	printk("2 dentry.ref=%u\n", fpath.dentry->d_lockref.count);
+	// printk("2 dentry.ref=%u\n", fpath.dentry->d_lockref.count);
 	return ret;
 }
 
