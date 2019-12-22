@@ -14,6 +14,7 @@
 #include <asm/errno.h>
 #include <linux/preempt.h>
 #include <linux/semaphore.h>
+#include <linux/kthread.h>
 #include "util.h"
 #include "thread.h" // nas_timer_ticks
 #include "gpio.h"
@@ -67,6 +68,12 @@ int nas_try_poweron(void) {
 
 	// TODO: check if already mounted
 
+	// suspend nas monitor thread first
+	kthread_park(nas_thread);
+
+	// refresh ticks
+	nas_timer_ticks = TIMER_TICKS;
+
 	// pullup gpio
 	if (get_gpio(gpio_pin) == 0)
 		set_gpio(gpio_pin, 1);
@@ -82,8 +89,8 @@ int nas_try_poweron(void) {
 		set_gpio(gpio_pin, 0);
 	}
 
-	// refresh ticks
-	nas_timer_ticks = TIMER_TICKS;
+	// resume monitor thread
+	kthread_unpark(nas_thread);
 
 out:
 	// leave critical section

@@ -8,16 +8,16 @@
 #include "gpio.h"
 
 int nas_timer_ticks = TIMER_TICKS;
-
-static struct task_struct *nas_thread = NULL;
+struct task_struct *nas_thread = NULL;
 
 /*
  * Periodically check if disk can be turned off.
  */
 static int thread_func(void *data) {
+	kthread_ssleep_retval(0.1, 0); // slightly delayed start
 
 	while (!kthread_should_stop()) {
-		// printk("ticks = %d\n", nas_timer_ticks);
+		printk("ticks = %d\n", nas_timer_ticks);
 		/* ticks  < 0 : inactive
 		 *       == 0 : just expired
 		 *        > 0 : active
@@ -71,7 +71,7 @@ static int thread_func(void *data) {
 			// eject
 			kthread_ssleep(0.5);
 			printk(KERN_INFO "eject(%s)\n", mntpt);
-			if (ioctl_by_bdev(bdev, CDROMEJECT, 0) !=0 ) {
+			if (ioctl_by_bdev(bdev, CDROMEJECT, 0) != 0) {
 				printk(KERN_ERR "eject() failed\n");
 			}
 
@@ -88,6 +88,10 @@ static int thread_func(void *data) {
 			kthread_ssleep(1);
 			printk(KERN_INFO "pulldown gpio(%d)\n", gpio_pin);
 			set_gpio(gpio_pin, 0);
+
+			// thread park (optional)
+			if (kthread_should_park())
+				kthread_parkme();
 		}
 
 		// tick-tock
@@ -109,6 +113,10 @@ int start_nas_mon(void) {
 	nas_thread = kthread_run(thread_func, NULL, thread_name);
 	if (nas_thread == ERR_PTR(-ENOMEM))
 		return ENOMEM;
+
+	// if (kthread_park(nas_thread) == 0)
+	// 	printk(KERN_INFO "thread %s suspended\n", thread_name);
+	// kthread_unpark(nas_thread);
 	return 0;
 }
 
