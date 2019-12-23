@@ -10,11 +10,11 @@
 #include <linux/kallsyms.h>
 #include <linux/namei.h>
 #include <linux/file.h>
-#include <asm/uaccess.h>
-#include <asm/errno.h>
 #include <linux/preempt.h>
 #include <linux/semaphore.h>
 #include <linux/kthread.h>
+#include <asm/uaccess.h>
+#include <asm/errno.h>
 #include "util.h"
 #include "thread.h" // nas_timer_ticks
 #include "gpio.h"
@@ -42,16 +42,21 @@ static inline int strncmp2(const char *cs, const char *ct, size_t count)
 int nas_try_poweron(void) {
 	static DEFINE_SEMAPHORE(sem);
 	static unsigned long volatile last_jf;
-	unsigned long jf;
 	int ret;
+	struct path fpath;
 
 	if (in_interrupt())
 		return EINTR;
 
-	// early task rejection (optional)
-	jf = jiffies - last_jf;
-	if (jf < SILENT_SEC*HZ)
-		return 99; // during silent period
+	// check if already mounted
+	if (kern_path(mntpt, 0, &fpath) == 0) {
+		if IS_ROOT(fpath.dentry) {
+			path_put(&fpath);
+			printk(KERN_INFO "already mounted\n");
+			return 88; // is a mountpoint
+		}
+		path_put(&fpath);
+	}
 
 	// enter critical section
 	if ((ret = down_interruptible(&sem)) != 0) {
@@ -59,14 +64,11 @@ int nas_try_poweron(void) {
 	}
 
 	// reject task if called within @SILENT_SEC seconds since last call
-	jf = jiffies - last_jf;
-	if (jf < SILENT_SEC*HZ) {
+	if (jiffies-last_jf < SILENT_SEC*HZ) {
 		ret = 99;
 		goto out;
 	}
 	last_jf = jiffies;
-
-	// TODO: check if already mounted
 
 	// suspend nas monitor thread first
 	kthread_park(nas_thread);
@@ -84,6 +86,7 @@ int nas_try_poweron(void) {
 		printk(KERN_INFO "mount successful\n");
 	} else if (ret == 1) {
 		printk(KERN_INFO "already mounted\n");
+		ret = 88;
 	} else {
 		printk(KERN_ERR "mount failed (%d), reset gpio\n", ret);
 		set_gpio(gpio_pin, 0);
@@ -95,7 +98,7 @@ int nas_try_poweron(void) {
 out:
 	// leave critical section
 	up(&sem);
-	return 0;
+	return ret;
 }
 
 inline int nas_path_match_with_str(const char* pathname, const char* str) {
@@ -161,8 +164,6 @@ int nas_check_mnt(const char *pathname)
 {
 	int ret = 0;
 	struct path fpath;
-	static char buf[PATH_MAX];
-	char* ppath; // ptr to buf
 
 	if (kern_path(pathname, LOOKUP_RCU, &fpath) != 0)
 		return ENOENT; // pathname not exist
@@ -174,8 +175,7 @@ int nas_check_mnt(const char *pathname)
 		goto out;
 	}
 
-	ppath = dentry_path_raw(fpath.dentry, buf, PATH_MAX);
-	if (ppath[0]!='/' || ppath[1]!=0) {
+	if (!IS_ROOT(fpath.dentry)) {
 		ret = ENOTBLK; // not a mountpoint
 		goto out;
 	}

@@ -39,7 +39,7 @@ if mountpoint -q "$mntpt"; then
 	exit $ALREADY_MOUNTED
 fi
 
-if ! wait_for_disk_uuid "$uuid"; then
+if ! wait_for_disk_uuid "$uuid" 15; then
 	exit $DISK_TIMEOUT
 fi
 
@@ -47,5 +47,5 @@ if ! mount "UUID=$uuid" "$mntpt"; then
 	exit $MOUNT_FAILED
 fi
 
-sleep 0.5
+sleep 1
 exit 0
