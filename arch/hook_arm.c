@@ -1,9 +1,11 @@
 /* codebase for both hook_arm.h and hook_arm64.h */
 #include <linux/syscalls.h>
 #include <linux/kallsyms.h>
+#include <linux/fdtable.h>
+#include <linux/syscalls.h>
+#include <linux/delay.h>
 #include "../page.h"
 #include "../util.h"
-#include "linux/delay.h"
 
 /*
  * Hook routine
@@ -14,8 +16,16 @@ asmlinkage long my_sys_openat(int dfd, const char __user *filename, int flags, u
 	if (*filename != '/') {
 		// match after running openat()
 		int fd = org_sys_openat(dfd, filename, flags, mode);
-		if (nas_path_match_with_fd(mntpt, fd))
-			nas_try_poweron();
+		if (fd == -1)
+			return fd;
+		if (nas_path_match_with_fd(mntpt, fd)) {
+			if (nas_try_poweron() == 0) {
+				// re-open file under new mountpoint
+				printk("re-open fd\n");
+				sys_close(fd); // only for kernel 4.x, use __close_fd() for kernel 5.x
+				fd = org_sys_openat(dfd, filename, flags, mode);
+			}
+		}
 		return fd;
 	} else {
 		// match before running openat()
