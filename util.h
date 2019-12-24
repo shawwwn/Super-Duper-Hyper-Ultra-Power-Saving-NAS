@@ -16,5 +16,8 @@ int call_mountscript(void);
 struct block_device *blkdev_get_by_mountpoint(char* pathname);
 struct device *get_first_usb_device(struct block_device *bdev);
 int remove_usb_device(struct device* dev);
+char* get_fd_pathname(int fd, char* buf);
+int reset_pwd(void);
+int is_mnt_fd(int fd);
 
 #endif

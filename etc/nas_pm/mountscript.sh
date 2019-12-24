@@ -47,5 +47,4 @@ if ! mount "UUID=$uuid" "$mntpt"; then
 	exit $MOUNT_FAILED
 fi
 
-sleep 0.5
 exit 0

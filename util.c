@@ -13,6 +13,9 @@
 #include <linux/preempt.h>
 #include <linux/semaphore.h>
 #include <linux/kthread.h>
+#include <linux/namei.h>
+#include <linux/file.h>
+#include <linux/fs_struct.h>
 #include <asm/uaccess.h>
 #include <asm/errno.h>
 #include "util.h"
@@ -111,29 +114,14 @@ inline int nas_path_match_with_str(const char* pathname, const char* str) {
 }
 
 inline int nas_path_match_with_fd(const char* pathname, int fd) {
-	struct file* f;
 	char buf[PATH_MAX];
-	char* pwd;
+	char* ppath;
 
-	if (fd < 0)
+	ppath = get_fd_pathname(fd, buf);
+	if (ppath == NULL)
 		return 0;
 
-	f = fget_raw(fd); // hold
-	if (f == NULL)
-		goto false;
-
-	// pwd = dentry_path_raw(current->fs->pwd.dentry, buf, PATH_MAX);
-	pwd = d_absolute_path(&f->f_path, buf, PATH_MAX); // get full path
-	if (pwd == NULL)
-		goto false;
-	// printk(KERN_INFO "openat = %s\n", pwd);
-
-	fput(f);
-	return nas_path_match_with_str(pathname, pwd);
-
-false:
-	fput(f); //release
-	return 0;
+	return nas_path_match_with_str(pathname, ppath);
 }
 
 /**
@@ -388,3 +376,70 @@ int remove_usb_device(struct device* dev)
 	return kern_remove_usb_device(dev);
 }
 EXPORT_SYMBOL(remove_usb_device);
+
+/**
+ * Get absolute pathname from given @fd
+ */
+inline char* get_fd_pathname(int fd, char* buf) {
+	char* ppath = NULL;
+	struct file* f;
+
+	if (fd < 0)
+		return NULL;
+
+	f = fget_raw(fd); // hold
+	if (f == NULL)
+		goto out;
+
+	ppath = d_absolute_path(&f->f_path, buf, PATH_MAX); // get full path
+
+out:
+	fput(f); //release
+	return ppath;
+}
+EXPORT_SYMBOL(get_fd_pathname);
+
+/**
+ * Reset current pwd so it reflects the most recent mount on its path.
+ */
+inline int reset_pwd(void) {
+	struct path fpath;
+	char buf[PATH_MAX];
+	char* pwd;
+
+	get_fs_pwd(current->fs, &fpath);
+	pwd = d_absolute_path(&fpath, buf, PATH_MAX);
+	path_put(&fpath);
+
+	kern_path(pwd, 0, &fpath);
+	set_fs_pwd(current->fs, &fpath);
+	path_put(&fpath);
+
+	printk(KERN_INFO "reset pwd = %s\n", pwd);
+
+	return 0;
+}
+
+/**
+ * Is @fd on top of current pwd's mount?
+ */
+inline int is_mnt_fd(int fd) {
+	struct file* f;
+	struct path fs_pwd;
+	int result = 0;
+
+	if (fd < 0)
+		return 0;
+
+	f = fget_raw(fd); // hold
+	if (f == NULL)
+		goto out;
+
+	get_fs_pwd(current->fs, &fs_pwd);
+	result = (fs_pwd.mnt == f->f_path.mnt);
+	path_put(&fs_pwd);
+
+out:
+	fput(f); //release
+	return result;
+}
