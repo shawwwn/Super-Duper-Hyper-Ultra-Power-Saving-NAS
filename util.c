@@ -53,7 +53,8 @@ int nas_try_poweron(void) {
 		if IS_ROOT(fpath.dentry) {
 			path_put(&fpath);
 			printk(KERN_INFO "already mounted\n");
-			return 88; // is a mountpoint
+			nas_timer_ticks = TIMER_TICKS; // refresh ticks
+			return 88;
 		}
 		path_put(&fpath);
 	}
