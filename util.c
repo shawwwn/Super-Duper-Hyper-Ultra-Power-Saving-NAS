@@ -380,7 +380,8 @@ EXPORT_SYMBOL(remove_usb_device);
 /**
  * Get absolute pathname from given @fd
  */
-inline char* get_fd_pathname(int fd, char* buf) {
+inline char* get_fd_pathname(int fd, char* buf)
+{
 	char* ppath = NULL;
 	struct file* f;
 
@@ -398,6 +399,20 @@ out:
 	return ppath;
 }
 EXPORT_SYMBOL(get_fd_pathname);
+
+/**
+ * Get pathname of current directory (pwd)
+ */
+inline char* get_pwd_pathname(char* buf, int buflen)
+{
+	struct path fpath;
+	char *bufp;
+	get_fs_pwd(current->fs, &fpath);
+	bufp = d_absolute_path(&fpath, buf, buflen); // pwd
+	path_put(&fpath);
+	return bufp;
+}
+EXPORT_SYMBOL(get_pwd_pathname);
 
 /**
  * Reset current pwd so it reflects the most recent mount on its path.
@@ -423,7 +438,7 @@ inline int reset_pwd(void) {
 /**
  * Is @fd on top of current pwd's mount?
  */
-inline int is_mnt_fd(int fd) {
+inline int fd_on_current_mnt(int fd) {
 	struct file* f;
 	struct path fs_pwd;
 	int result = 0;
@@ -443,3 +458,128 @@ out:
 	fput(f); //release
 	return result;
 }
+
+/**
+ * Is current pwd mounted?
+ */
+inline int is_pwd_mounted(void) {
+	int result;
+	struct path root, pwd;
+	struct fs_struct *fs = current->fs;
+	spin_lock(&fs->lock);
+	root = fs->root;
+	path_get(&root);
+	pwd = fs->pwd;
+	path_get(&pwd);
+	spin_unlock(&fs->lock);
+
+	result = (root.mnt != pwd.mnt);
+	path_put(&root);
+	path_put(&pwd);
+	return result;
+}
+
+/**
+ * Resolve a base path and a
+ * Return NULL if path string exhausted.
+ */
+#define TK_NONE 0 // token is empty string (usually indicates invalid syntax)
+#define TK_NEXT 1 // token is a directory name
+#define TK_CURR 2 // token is "."
+#define TK_PREV 3 // token is ".."
+char *join_path(const char *base, const char *relative, char *resolved)
+{
+	/**
+	 * Find next token in a path string, delimit by '/'.
+	 * Return NULL if path string exhausted.
+	 */
+	inline const char* next_token(const char *path, char *token)
+	{
+		while ((*path != '\0') && (*path != '/'))
+			*(token++) = *(path++);
+		*token = '\0';
+		if (*path == '/')
+			path++;
+		return (*path == '\0') ? NULL : path;
+	}
+
+	/**
+	 * Parse token into different types.
+	 */
+	inline int categorize_token(char *token)
+	{
+		if (*token == '\0')
+			return TK_NONE;
+		else if (*token == '.') {
+			char* next = token+1;
+			if (*next == '\0')
+				return TK_CURR;
+			else if ((*next == '.') && (*(next+1) == '\0'))
+				return TK_PREV;
+		}
+		return TK_NEXT;
+	}
+
+	/*
+	 * Like strcpy(),
+	 * but return the end of destination string.
+	 */
+	inline char *strcpy2(char *dest, const char *src)
+	{
+		while (*src != '\0')
+			*dest++ = *src++;
+		*dest = '\0';
+		return dest;
+	}
+
+	const char *rel_path = relative;
+	char token[NAME_MAX];
+	char *cursor; // cursor in resolved
+
+	// prepare resolved
+	if (resolved == base)
+		cursor = resolved + strlen(base) - 1;
+	else
+		cursor = strcpy2(resolved, base) - 1;
+	if (*cursor == '/')
+		*cursor = '\0';
+	else
+		++cursor;
+
+	// push/pop token to resolved
+	while (rel_path != NULL) {
+		rel_path = next_token(rel_path, token);
+		switch (categorize_token(token)) {
+			case TK_PREV:
+				// pop
+				while (*cursor != '/') {
+					if (cursor < resolved) // behind root
+						return NULL;
+					--cursor;
+				}
+				*cursor = '\0';
+				break;
+			case TK_CURR:
+				// do nothing
+				break;
+			case TK_NEXT:
+				// push
+				*cursor++ = '/';
+				cursor = strcpy2(cursor, token);
+				break;
+			case TK_NONE:
+			default:
+				return NULL; // unknown token
+		}
+	}
+
+	// root directory
+	if (resolved == cursor) {
+		*cursor++ = '/';
+		*cursor = '\0';
+	}
+
+	return resolved;
+}
+
+

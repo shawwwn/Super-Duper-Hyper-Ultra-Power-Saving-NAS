@@ -14,34 +14,28 @@ asmlinkage long (*org_sys_openat)(int dfd, const char __user *filename, int flag
 asmlinkage long my_sys_openat(int dfd, const char __user *filename, int flags, umode_t mode)
 {
 	if (*filename != '/') {
-		// TODO: A better way to do this would be to join current.pwd and 
-		//       filename before calling org_sys_openat();
+		// relative path
+		char buf[PATH_MAX*2];
+		char* abs_path;
+		abs_path = get_pwd_pathname(buf, PATH_MAX);
+		if (abs_path == NULL)
+			goto out;
+		if (join_path(abs_path, filename, abs_path) == NULL)
+			goto out;
 
-		// match after running openat()
-		int fd = org_sys_openat(dfd, filename, flags, mode);
-		if (fd < 0)
-			return fd;
-
-		if (nas_path_match_with_fd(mntpt, fd)) {
-			int ret = nas_try_poweron();
-
-			if (ret == 0)
+		if (nas_path_match_with_str(mntpt, abs_path)) {
+			if (nas_try_poweron() == 0 || \
+				!is_pwd_mounted())
 				reset_pwd();
-
-			if (!is_mnt_fd(fd)) {
-				// re-open file under new mountpoint
-				printk("re-open fd\n");
-				sys_close(fd); // only for kernel 4.x, use __close_fd() for kernel 5.x
-				fd = org_sys_openat(dfd, filename, flags, mode);
-			}
 		}
-		return fd;
+
 	} else {
-		// match before running openat()
+		// absolute path
 		if (nas_path_match_with_str(mntpt, filename))
 			nas_try_poweron();
 	}
 
+out:
 	return org_sys_openat(dfd, filename, flags, mode);
 }
 
