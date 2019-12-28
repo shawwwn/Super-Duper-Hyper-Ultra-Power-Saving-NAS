@@ -45,6 +45,10 @@ static void __exit exit_func(void)
 	stop_nas_mon();
 }
 
+module_init(init_func);
+module_exit(exit_func);
+
+
 static int set_state(const char *val, const struct kernel_param *kp)
 {
 	int ret;
@@ -142,9 +146,6 @@ static const struct kernel_param_ops control_ops = {
 	.get	= get_state,
 };
 
-
-module_init(init_func);
-module_exit(exit_func);
 
 state_t state = ST_OFF;
 module_param_cb(control, &control_ops, NULL, 0600);

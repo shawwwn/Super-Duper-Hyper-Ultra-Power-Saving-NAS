@@ -43,6 +43,7 @@ static inline int get_sys_call_table_arm64(void)
 		my_compat_sys_call_table = (void *)kallsyms_lookup_name("compat_sys_call_table");
 	if (my_compat_sys_call_table == NULL)
 		return -1;
+	printk(KERN_INFO "compat_sys_call_table: %p\n", my_compat_sys_call_table);
 	return 0;
 }
 
@@ -54,14 +55,12 @@ static inline void hook_sys_call_table_arm64(void)
 {
 	pte_t* pte;
 
-	printk(KERN_INFO "compat_sys_call_table: %p\n", my_compat_sys_call_table);
 	org_compat_sys_openat=(void*)(my_compat_sys_call_table[__NR_compat_openat]);
-	printk(KERN_INFO "compat_sys_openat: %p\n", org_compat_sys_openat);
 
 	pte = get_pte(my_init_mm, (unsigned long)&my_compat_sys_call_table[__NR_compat_openat]);
 	pte_enable_write(pte);
 	my_compat_sys_call_table[__NR_compat_openat] = my_compat_sys_openat;
-	printk(KERN_INFO "replace compat_sys_openat %p => %p\n", org_compat_sys_openat, my_compat_sys_openat);
+	printk(KERN_INFO "compat_sys_openat: %p => %p\n", org_compat_sys_openat, my_compat_sys_openat);
 	pte_disable_write(pte);
 }
 

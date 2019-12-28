@@ -49,6 +49,7 @@ static inline int get_init_mm(void)
 		my_init_mm = (struct mm_struct*)kallsyms_lookup_name("init_mm");
 	if (my_init_mm == NULL)
 		return -1;
+	printk(KERN_INFO "init_mm: %p\n", my_init_mm);
 	return 0;
 }
 
@@ -62,6 +63,7 @@ static inline int get_sys_call_table_arm(void)
 		my_sys_call_table = (void *)kallsyms_lookup_name("sys_call_table");
 	if (my_sys_call_table == NULL)
 		return -1;
+	printk(KERN_INFO "sys_call_table: %p\n", my_sys_call_table);
 	return 0;
 }
 
@@ -72,14 +74,12 @@ static inline void hook_sys_call_table_arm(void)
 {
 	pte_t* pte;
 
-	printk(KERN_INFO "sys_call_table: %p\n", my_sys_call_table);
 	org_sys_openat = (void *)(my_sys_call_table[__NR_openat]);
-	printk(KERN_INFO "sys_openat: %p\n", org_sys_openat);
 
 	pte = get_pte(my_init_mm, (unsigned long)&my_sys_call_table[__NR_openat]);
 	pte_enable_write(pte);
 	my_sys_call_table[__NR_openat] = &my_sys_openat;
-	printk(KERN_INFO "replace sys_openat %p => %p\n", org_sys_openat, my_sys_openat);
+	printk(KERN_INFO "sys_openat: %p => %p\n", org_sys_openat, my_sys_openat);
 	pte_disable_write(pte);
 }
 
