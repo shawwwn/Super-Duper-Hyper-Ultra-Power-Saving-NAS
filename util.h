@@ -1,10 +1,13 @@
 #ifndef HEADER_UTIL
 #define HEADER_UTIL
 
+typedef enum {ST_OFF, ST_ON, ST_BUSY} state_t;
+
 extern char* mntscript;
 extern char* mntpt;
 extern char* uuid;
 extern int gpio_pin;
+extern state_t state;
 
 int nas_try_poweron(void);
 int nas_path_match_with_str(const char* pathname, const char* str);

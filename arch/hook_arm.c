@@ -71,7 +71,6 @@ static inline int get_sys_call_table_arm(void)
 static inline void hook_sys_call_table_arm(void)
 {
 	pte_t* pte;
-	printk("Hooking sys_call_table\n");
 
 	printk(KERN_INFO "sys_call_table: %p\n", my_sys_call_table);
 	org_sys_openat = (void *)(my_sys_call_table[__NR_openat]);

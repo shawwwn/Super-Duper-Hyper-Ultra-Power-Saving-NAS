@@ -53,7 +53,6 @@ static inline int get_sys_call_table_arm64(void)
 static inline void hook_sys_call_table_arm64(void)
 {
 	pte_t* pte;
-	printk("Hooking compat_sys_call_table\n");
 
 	printk(KERN_INFO "compat_sys_call_table: %p\n", my_compat_sys_call_table);
 	org_compat_sys_openat=(void*)(my_compat_sys_call_table[__NR_compat_openat]);
@@ -84,7 +83,7 @@ static inline void unhook_sys_call_table_arm64(void)
  */
 static int install_hook(void)
 {
-	printk("install ARM64 hooks\n");
+	printk(KERN_INFO "nas_pm: install hooks for ARM64\n");
 
 	if (get_init_mm() != 0) {
 		printk(KERN_ERR "Couldn't file init_mm.\n");

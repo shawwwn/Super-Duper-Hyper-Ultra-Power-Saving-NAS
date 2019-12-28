@@ -19,10 +19,6 @@ extern struct task_struct *nas_thread;
 			ACTION;                                              \
 		}                                                        \
 		schedule_timeout(msecs_to_jiffies((int)(sec*1000)));     \
-		set_current_state(TASK_RUNNING);                         \
-		if (kthread_should_park()) {                             \
-			kthread_parkme();                                    \
-		}                                                        \
 	} else                                                       \
 		do {} while (0)
 #define kthread_ssleep(sec) _kthread_ssleep(sec, break)

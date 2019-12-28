@@ -1,6 +1,8 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>
+#include <linux/kthread.h>
+#include <linux/sched.h>
 #include "util.h"
 #include "thread.h"
 #include "gpio.h"
@@ -21,10 +23,10 @@ static int __init init_func(void)
 		printk(KERN_ERR "Invalid kernel module parameters.");
 		return -EINVAL;
 	}
-	printk(KERN_INFO "mountscript = %s\n", mntscript);
-	printk(KERN_INFO "mountpoint = %s\n", mntpt);
-	printk(KERN_INFO "uuid = %s\n", uuid);
-	printk(KERN_INFO "gpio = %d\n", gpio_pin);
+	printk(KERN_INFO "nas_pm: mountscript = %s\n", mntscript);
+	printk(KERN_INFO "nas_pm: mountpoint = %s\n", mntpt);
+	printk(KERN_INFO "nas_pm: uuid = %s\n", uuid);
+	printk(KERN_INFO "nas_pm: gpio = %d\n", gpio_pin);
 
 	ret = start_nas_mon();
 	if (ret != 0)
@@ -43,8 +45,109 @@ static void __exit exit_func(void)
 	stop_nas_mon();
 }
 
+static int set_state(const char *val, const struct kernel_param *kp)
+{
+	int ret;
+	char buf[8];
+	int last;
+	strncpy(buf, val, 7); // last char is '\0'
+	last = strlen(buf) - 1;
+	if (last <= 0 || last > 6)
+		return -EINVAL;
+	if (buf[last] == '\n')
+		buf[last] = '\0';
+
+	if (strcmp("on", buf) == 0) {
+		int state_org = state;
+		state = ST_BUSY;
+		printk(KERN_DEBUG "nas_pm: powering on disk ...\n");
+
+		if ((ret = nas_try_poweron()) == 0) {
+			printk(KERN_DEBUG "nas_pm: disk powered on\n");
+			state = ST_ON;
+		} else
+			state = state_org;
+		return ret;
+
+	} else if (strcmp("off", buf) == 0) {
+		static asmlinkage unsigned long (*wait_task_inactive)(struct task_struct *, long match_state);
+		int state_org = state;
+		state = ST_BUSY;
+
+		ret = nas_check_mnt(mntpt);
+		if (ret != 0) {
+			state = state_org;
+			return -ret;
+		}
+
+		printk(KERN_DEBUG "nas_pm: powering off disk ...\n");
+
+		// wait for thread's current operation to finish
+		// set unmount flag
+		// restart thread to unmount disk
+		set_current_state(TASK_INTERRUPTIBLE);
+		if ((ret = kthread_park(nas_thread)) != 0) { // for current operation to finish
+			state = state_org;
+			return ret;
+		}
+		nas_timer_ticks = 0;
+		kthread_unpark(nas_thread); // restart thread to unmount disk
+
+		// wait for thread to reach its first sleep()
+		#ifdef CONFIG_KALLSYMS
+		if (!wait_task_inactive)
+			wait_task_inactive = (typeof(wait_task_inactive))kallsyms_lookup_name("wait_task_inactive");
+		set_current_state(TASK_INTERRUPTIBLE);
+		wait_task_inactive(nas_thread, TASK_INTERRUPTIBLE);
+		set_current_state(TASK_INTERRUPTIBLE);
+		schedule_timeout(1); // yield?
+		#else
+		set_current_state(TASK_INTERRUPTIBLE);
+		schedule_timeout(msecs_to_jiffies(500));
+		#endif
+
+		// wait for thread to finish unmount
+		set_current_state(TASK_INTERRUPTIBLE);
+		if ((ret = kthread_park(nas_thread)) == 0)
+			printk(KERN_DEBUG "nas_pm: disk powered off\n");
+		kthread_unpark(nas_thread); // restart thread
+		state = ST_OFF;
+		return ret;
+	}
+
+	// default
+	return -EINVAL;
+}
+
+static int get_state(char *buffer, const struct kernel_param *kp)
+{
+	switch (state) {
+		case ST_OFF:
+			strcpy(buffer, "off");
+			break;
+		case ST_ON:
+			strcpy(buffer, "on");
+			break;
+		case ST_BUSY:
+			strcpy(buffer, "busy");
+			break;
+		default:
+			strcpy(buffer, "error");
+	}
+	return strlen(buffer);
+}
+
+static const struct kernel_param_ops control_ops = {
+	.set	= set_state,
+	.get	= get_state,
+};
+
+
 module_init(init_func);
 module_exit(exit_func);
+
+state_t state = ST_OFF;
+module_param_cb(control, &control_ops, NULL, 0600);
 
 char *uuid = NULL;
 module_param_named(uuid, uuid, charp, 0600);

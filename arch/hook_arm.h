@@ -12,7 +12,7 @@
  */
 static int install_hook(void)
 {
-	printk("install ARM hooks\n");
+	printk(KERN_INFO "nas_pm: install hooks for ARM\n");
 
 	if (get_init_mm() != 0) {
 		printk(KERN_ERR "Couldn't file init_mm.\n");
