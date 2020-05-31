@@ -8,7 +8,7 @@
 asmlinkage long (*org_compat_sys_openat)(int dfd, const char __user *filename, int flags, umode_t mode);
 asmlinkage long my_compat_sys_openat(int dfd, const char __user *filename, int flags, umode_t mode)
 {
-	if (*filename != '/') {
+	if (filename && *filename != '/') {
 		// relative path
 		char buf[PATH_MAX*2];
 		char* abs_path;
