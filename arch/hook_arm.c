@@ -13,7 +13,10 @@
 asmlinkage long (*org_sys_openat)(int dfd, const char __user *filename, int flags, umode_t mode);
 asmlinkage long my_sys_openat(int dfd, const char __user *filename, int flags, umode_t mode)
 {
-	if (filename && *filename != '/') {
+	if (!filename)
+		goto out;
+
+	if (*filename != '/') {
 		// relative path
 		char buf[PATH_MAX*2];
 		char* abs_path;
