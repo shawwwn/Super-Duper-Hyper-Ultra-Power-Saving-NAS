@@ -25,10 +25,13 @@ int blkdev_driver_ioctl(struct block_device *bdev, fmode_t mode, unsigned cmd, u
  * Periodically check if disk can be turned off.
  */
 static int thread_func(void *data) {
+	bool is_active=true;
 	kthread_ssleep_retval(0.1, 0); // slightly delayed start
 
 	while (!kthread_should_stop()) {
-		printk(KERN_DEBUG "nas_mon: ticks = %d\n", nas_timer_ticks);
+		if (is_active)
+			printk(KERN_DEBUG "nas_mon: ticks = %d\n", nas_timer_ticks);
+
 		/* ticks  < 0 : inactive
 		 *       == 0 : just expired
 		 *        > 0 : active
@@ -37,6 +40,7 @@ static int thread_func(void *data) {
 		// Check mount point can umount
 		if (nas_timer_ticks >= 0) {
 			int ret;
+			is_active = true;
 			ret = nas_check_mnt(mntpt);
 			if (ret == EBUSY) {
 				// hdd is busy
@@ -53,8 +57,10 @@ static int thread_func(void *data) {
 			} else if (ret != 0) {
 				printk(KERN_ERR "nas_mon: unknow error(%d)\n", ret);
 			}
-		} else
+		} else {
+			is_active = false;
 			goto restart;
+		}
 
 		// Check timer expiration
 		if (nas_timer_ticks == 0) {
