@@ -23,6 +23,9 @@
 #include "gpio.h"
 #include "patch.h"
 
+#include <linux/module.h>
+#include <linux/unistd.h>
+
 #define SILENT_SEC 10
 
 /**
@@ -141,25 +144,31 @@ inline int nas_path_match_with_fd(const char* pathname, int fd) {
 	return nas_path_match_with_str(pathname, ppath);
 }
 
+static int kern_umount(const char *name, int flags) {
+	int lookup_flags = LOOKUP_MOUNTPOINT;
+	struct path path;
+	int ret;
+	asmlinkage long (*path_umount)(struct path *path, int flags);
+
+	// basic validity checks done first
+	if (flags & ~(MNT_FORCE | MNT_DETACH | MNT_EXPIRE | UMOUNT_NOFOLLOW))
+		return -EINVAL;
+
+	if (!(flags & UMOUNT_NOFOLLOW))
+		lookup_flags |= LOOKUP_FOLLOW;
+	ret = kern_path(name, lookup_flags, &path);
+	if (ret != 0)
+		return ret;
+
+	path_umount = (typeof(path_umount))my_kallsyms_lookup_name("path_umount");
+	return path_umount(&path, flags);
+}
+
 /**
  * Umount @pathname.
- * Wrapper for sys_unmount().
  */
-int nas_unmount(const char* pathname)
-{
-	long ret;
-	asmlinkage long (*sys_umount)(char *pathname, int flags);
-	// mm_segment_t old_fs;
-
-	sys_umount = (typeof(sys_umount))my_kallsyms_lookup_name("sys_umount");
-
-	// old_fs = get_fs();
-	// set_fs(KERNEL_DS);
-
-	ret = (*sys_umount)((char *)pathname, 0);
-
-	// set_fs(old_fs);
-	return ret;
+int nas_unmount(const char* pathname) {
+	return kern_umount(pathname, 0);
 }
 
 /**

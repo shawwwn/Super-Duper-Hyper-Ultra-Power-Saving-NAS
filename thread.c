@@ -82,9 +82,6 @@ static int thread_func(void *data) {
 			// eject
 			kthread_ssleep(1);
 			printk(KERN_INFO "nas_mon: eject(%s)\n", mntpt);
-			// if (ioctl_by_bdev(bdev, CDROMEJECT, 0) != 0) {
-			// 	printk(KERN_ERR "nas_mon: eject() failed\n");
-			// }
 			if (blkdev_driver_ioctl(bdev, 0, CDROMEJECT, 0) != 0) {
 				printk(KERN_ERR "nas_mon: eject() failed\n");
 			}
