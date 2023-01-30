@@ -21,6 +21,7 @@
 #include "util.h"
 #include "thread.h" // nas_timer_ticks
 #include "gpio.h"
+#include "patch.h"
 
 #define SILENT_SEC 10
 
@@ -40,6 +41,22 @@ static inline int strncmp2(const char *cs, const char *ct, size_t count)
 		count--;
 	}
 	return 0;
+}
+
+void _set_fs_pwd(struct fs_struct *fs, const struct path *path)
+{
+	struct path old_pwd;
+
+	path_get(path);
+	spin_lock(&fs->lock);
+	write_seqcount_begin(&fs->seq);
+	old_pwd = fs->pwd;
+	fs->pwd = *path;
+	write_seqcount_end(&fs->seq);
+	spin_unlock(&fs->lock);
+
+	if (old_pwd.dentry)
+		path_put(&old_pwd);
 }
 
 int nas_try_poweron(void) {
@@ -107,14 +124,14 @@ out:
 
 inline int nas_path_match_with_str(const char* pathname, const char* str) {
 	if (strncmp2(pathname, str, PATH_MAX) == 0) { // PATH_MAX
-		printk(KERN_INFO "openat = %s\n", str);
+		// printk(KERN_INFO "openat=%s\n", str);
 		return 1;
 	}
 	return 0;
 }
 
 inline int nas_path_match_with_fd(const char* pathname, int fd) {
-	char buf[PATH_MAX];
+	static char buf[PATH_MAX];
 	char* ppath;
 
 	ppath = get_fd_pathname(fd, buf);
@@ -132,16 +149,16 @@ int nas_unmount(const char* pathname)
 {
 	long ret;
 	asmlinkage long (*sys_umount)(char *pathname, int flags);
-	mm_segment_t old_fs;
+	// mm_segment_t old_fs;
 
-	sys_umount = (typeof(sys_umount))kallsyms_lookup_name("sys_umount");
+	sys_umount = (typeof(sys_umount))my_kallsyms_lookup_name("sys_umount");
 
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
+	// old_fs = get_fs();
+	// set_fs(KERNEL_DS);
 
 	ret = (*sys_umount)((char *)pathname, 0);
 
-	set_fs(old_fs);
+	// set_fs(old_fs);
 	return ret;
 }
 
@@ -284,9 +301,13 @@ struct device *get_first_usb_device(struct block_device *bdev)
 	 * ->usb_interface->usb_device(x3)
 	 * ->(null)
 	 */
-	bdev = bdgrab(bdev); // hold bdev
-	dev = get_device(bdev->bd_part->__dev.parent); // starts from 'disk', hold dev
-	bdput(bdev); // release bdev
+	// bdev = bdgrab(bdev); // hold bdev
+	// dev = get_device(bdev->bd_part->__dev.parent); // starts from 'disk', hold dev
+	// bdput(bdev); // release bdev
+
+	ihold(bdev->bd_inode);
+	dev = get_device(bdev->bd_device.parent); // starts from 'disk', hold dev
+	iput(bdev->bd_inode);
 
 	while (
 		((dev2 = get_device(dev->parent)) != NULL) && // hold new dev
@@ -319,13 +340,13 @@ static int vfs_remove_usb_device(struct device* dev)
 	char pathname[512] = "/sys/bus/usb/devices/";
 	struct file *f;
 	loff_t pos;
-	mm_segment_t old_fs = get_fs();
+	// mm_segment_t old_fs = get_fs();
 
 	strcat(pathname, devname);
 	strcat(pathname, "/remove");
 	// printk("pathname = %s\n", pathname);
 
-	set_fs(KERNEL_DS);
+	// set_fs(KERNEL_DS);
 	f = filp_open(pathname, O_WRONLY, 0);
 	if (IS_ERR(f)) {
 		ret = PTR_ERR(f);
@@ -337,7 +358,7 @@ static int vfs_remove_usb_device(struct device* dev)
 
 out:
 	filp_close(f, NULL);
-	set_fs(old_fs);
+	// set_fs(old_fs);
 	return ret;
 }
 
@@ -349,7 +370,7 @@ out:
 static int kern_remove_usb_device(struct  device* dev)
 {
 	int (*usb_remove_device)(struct usb_device *udev) = \
-		(typeof(usb_remove_device))kallsyms_lookup_name("usb_remove_device");
+		(typeof(usb_remove_device))my_kallsyms_lookup_name("usb_remove_device");
 
 	int ret = 0;
 	struct usb_device *udev = to_usb_device(dev);
@@ -392,7 +413,7 @@ inline char* get_fd_pathname(int fd, char* buf)
 	if (f == NULL)
 		goto out;
 
-	ppath = d_absolute_path(&f->f_path, buf, PATH_MAX); // get full path
+	ppath = d_path(&f->f_path, buf, PATH_MAX); // get full path
 
 out:
 	fput(f); //release
@@ -408,7 +429,7 @@ inline char* get_pwd_pathname(char* buf, int buflen)
 	struct path fpath;
 	char *bufp;
 	get_fs_pwd(current->fs, &fpath);
-	bufp = d_absolute_path(&fpath, buf, buflen); // pwd
+	bufp = d_path(&fpath, buf, buflen); // absolute pwd
 	path_put(&fpath);
 	return bufp;
 }
@@ -419,18 +440,18 @@ EXPORT_SYMBOL(get_pwd_pathname);
  */
 inline int reset_pwd(void) {
 	struct path fpath;
-	char buf[PATH_MAX];
+	static char buf[PATH_MAX];
 	char* pwd;
 
 	get_fs_pwd(current->fs, &fpath);
-	pwd = d_absolute_path(&fpath, buf, PATH_MAX);
+	pwd = d_path(&fpath, buf, PATH_MAX);
 	path_put(&fpath);
 
 	kern_path(pwd, 0, &fpath);
-	set_fs_pwd(current->fs, &fpath);
+	_set_fs_pwd(current->fs, &fpath);
 	path_put(&fpath);
 
-	printk(KERN_INFO "reset pwd = %s\n", pwd);
+	printk(KERN_INFO "reset_pwd=%s\n", pwd);
 
 	return 0;
 }

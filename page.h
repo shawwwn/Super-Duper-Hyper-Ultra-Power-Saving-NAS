@@ -1,7 +1,7 @@
 #ifndef HEADER_PAGE
 #define HEADER_PAGE
 
-#include <asm/pgtable.h>
+#include <linux/pgtable.h>
 #include <asm/tlbflush.h>
 
 pte_t* get_pte(struct mm_struct* mm_p, unsigned long addr);

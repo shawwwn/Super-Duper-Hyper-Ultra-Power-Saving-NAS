@@ -3,12 +3,23 @@
 #include <linux/kthread.h>
 #include <asm/errno.h>
 #include <linux/cdrom.h>
+#include <linux/blkdev.h>
 #include "thread.h"
 #include "util.h"
 #include "gpio.h"
 
 int nas_timer_ticks = TIMER_TICKS;
 struct task_struct *nas_thread = NULL;
+
+int blkdev_driver_ioctl(struct block_device *bdev, fmode_t mode, unsigned cmd, unsigned long arg)
+{
+	struct gendisk *disk = bdev->bd_disk;
+
+	if (disk->fops->ioctl)
+		return disk->fops->ioctl(bdev, mode, cmd, arg);
+
+	return -ENOTTY;
+}
 
 /*
  * Periodically check if disk can be turned off.
@@ -71,7 +82,10 @@ static int thread_func(void *data) {
 			// eject
 			kthread_ssleep(1);
 			printk(KERN_INFO "nas_mon: eject(%s)\n", mntpt);
-			if (ioctl_by_bdev(bdev, CDROMEJECT, 0) != 0) {
+			// if (ioctl_by_bdev(bdev, CDROMEJECT, 0) != 0) {
+			// 	printk(KERN_ERR "nas_mon: eject() failed\n");
+			// }
+			if (blkdev_driver_ioctl(bdev, 0, CDROMEJECT, 0) != 0) {
 				printk(KERN_ERR "nas_mon: eject() failed\n");
 			}
 

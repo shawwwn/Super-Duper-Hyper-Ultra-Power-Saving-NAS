@@ -1,12 +1,12 @@
 # Super Duper Hyper Ultra Power Saving NAS Driver Module
+Driver module for my super power-saving NAS.
 
-This is the driver module for my super power-saving NAS.\
-Essentially, this module monitors accesses to a given directory(mountpoint), and powers up backing harddrive upon access.\
-If the backing harddrive has been idle for too long, it will be unmounted and power down in order to save power.
+Tl;dr: This module monitors accesses to a mountpoint directory, powers up(thru gpio) and mounts underlying hdd upon access.\
+Automatically unmounted and power down hdd in order to save power.
 
-Developed on Kernel 4.9+ for **ARM64**, should also work on **ARM**.\
-Has not been make compatible with **X86(_64)**, yet.
-
+Sloppily made compatible with kernel 5.19 for ARM/ARM64.\
+I am not responsible for any potential bugs/caveats. Please submit a Issue/PR if you find one.\
+For kernel 4.9 refer to branch **4.9**.
 
 ## Installation
 **Prerequisites:**
@@ -14,26 +14,22 @@ Has not been make compatible with **X86(_64)**, yet.
 apt-get install mountpoint build-essential linux-headers-`uname -r`
 ```
 
-**Auto Install:** (for systemd)
+**Auto Install:**
 ```bash
 make
 make install
 # edit module parameters in /etc/modprobe.d/nas_pm.conf
 make uninstall
 ```
-Module will be installed as a system module to run at every boot.
 
 **Manual Install:**
 ```bash
 make
-insmod nas_pm.ko uuid="xxxxxx" mountpoint="/path/to/mountpoint/directory" gpio=123
-
+insmod nas_pm.ko uuid="<uuid-of-hdd>" mountpoint="/path/to/mountpoint/directory" gpio=123
 rmmod nas_pm.ko
 ```
 
-After reboot, harddrive will be automatically powered on whenever mountpoint directory is accessed, and powered off when idle timeout.
-
-**Manual On/Off:**
+**Manual Control:**
 ```bash
 # power on harddrive
 echo on >/sys/module/nas_pm/parameters/control
@@ -45,7 +41,7 @@ cat /sys/module/nas_pm/parameters # 'off'
 ```
 
 ## Module Parameters:
-* **`uuid`** - UUID of the disk to be mounted.
-* **`mountpoint`** - Path to the directory for which the disk will be mounted at.
-* **`mountscript`** - Path to the shell script that mounts our disk. (default: `/etc/nas_pm/mountscript.sh`)
-* **`gpio`** - GPIO pin number to switch the disk on and off.
+* **`uuid`** - UUID of harddrive partition to mount.
+* **`mountpoint`** - Path of directory the partition will be mounted at.
+* **`mountscript`** - Path to a custom shell script that do the mounting. (default: `/etc/nas_pm/mountscript.sh`)
+* **`gpio`** - GPIO pin(use kernel numbering) to switch harddrive on and off.

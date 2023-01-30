@@ -5,7 +5,6 @@
 
 #include "hook_arm.c"
 
-
 /*
  * Export functions
  * to be used in top level functions
@@ -24,11 +23,15 @@ static int install_hook(void)
 		return 2;
 	}
 
+	preempt_disable();
 	hook_sys_call_table_arm();
+	preempt_enable();
 	return 0
 }
 
 static void uninstall_hook(void)
 {
+	preempt_disable();
 	unhook_sys_call_table_arm();
+	preempt_enable();
 }

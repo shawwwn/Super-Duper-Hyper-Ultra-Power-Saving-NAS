@@ -6,6 +6,7 @@
 #include "util.h"
 #include "thread.h"
 #include "gpio.h"
+#include "patch.h"
 
 #ifdef __aarch64__
 #include "arch/hook_arm64.h"
@@ -27,6 +28,8 @@ static int __init init_func(void)
 	printk(KERN_INFO "nas_pm: mountpoint = %s\n", mntpt);
 	printk(KERN_INFO "nas_pm: uuid = %s\n", uuid);
 	printk(KERN_INFO "nas_pm: gpio = %d\n", gpio_pin);
+
+	init_kp();
 
 	ret = start_nas_mon();
 	if (ret != 0)
@@ -100,7 +103,7 @@ static int set_state(const char *val, const struct kernel_param *kp)
 		// wait for thread to reach its first sleep()
 		#ifdef CONFIG_KALLSYMS
 		if (!wait_task_inactive)
-			wait_task_inactive = (typeof(wait_task_inactive))kallsyms_lookup_name("wait_task_inactive");
+			wait_task_inactive = (typeof(wait_task_inactive))my_kallsyms_lookup_name("wait_task_inactive");
 		set_current_state(TASK_INTERRUPTIBLE);
 		wait_task_inactive(nas_thread, TASK_INTERRUPTIBLE);
 		set_current_state(TASK_INTERRUPTIBLE);
